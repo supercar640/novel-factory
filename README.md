@@ -34,7 +34,7 @@ Phase 1: 컨텍스트 수립 (최초 1회)
   ┌─────────────────────────────────────────────────────┐
   │                                                     │
   │  Phase 2: 전개 선정                                  │
-  │    전개 옵션 5개 생성 → PD가 1~3개 선정               │
+  │    전개 옵션 5개 생성 → PD가 1개 선정                 │
   │                    ↓                                │
   │  Phase 3: 집필                                       │
   │    문체 설정 → 작성 모드 선택 → 원고 작성 → PD 승인    │
@@ -55,11 +55,10 @@ Phase 2 → 3 → 4 → 2 사이클이 연재 종료까지 반복된다.
 
 | 단축키 | 명령 | 설명 |
 |--------|------|------|
-| `S <id>` | select | **[S]elect** — 항목 선정 |
+| `S <id>` | select | **[S]elect** — 항목 선정 (1개) |
 | `H <id>` | hold | **[H]old** — 항목 보류 |
 | `D <id>` | discard | **[D]iscard** — 항목 폐기 |
 | `R` | retry | **[R]etry** — 전체 재생성 |
-| `G` | regen | **[G]enerate** — 선정 유지, 나머지 재생성 (Phase 2) |
 | `C` | confirm-end | **[C]onfirm** — 선정 종료 (Phase 2) |
 
 ### 결과물 검토 (기획안/원고/퇴고)
@@ -84,17 +83,16 @@ python nfc.py <command>
 | `status` | — | 현재 상태 표시 |
 | `items` | — | 제안 항목 목록 |
 | `add "<text>" [-p 0.XX]` | — | 항목 추가 |
-| `select <id>` | `S` | 항목 선정 |
+| `select <id>` | `S` | 항목 선정 (1개만) |
 | `hold <id>` | `H` | 항목 보류 |
 | `discard <id>` | `D` | 항목 폐기 |
 | `retry` | `R` | 전체 재생성 |
-| `regen` | `G` | 선정 유지, 나머지 재생성 (Phase 2) |
 | `approve` | `A` | 승인 |
 | `revise "<feedback>"` | `M` | 수정 요청 |
 | `reject` | `D` | 결과물 폐기 |
 | `confirm-end` | `C` | 전개 선정 종료 (Phase 2) |
 | `save <type> <file>` | — | 초안 저장 (plan/manuscript/proofread) |
-| `config <key> <value>` | — | 설정 변경 (style_reference, writing_mode_N) |
+| `config <key> <value>` | — | 설정 변경 (style_reference, writing_mode, auto_write) |
 | `context-update` | — | 컨텍스트 갱신 완료 |
 | `context-backup` | — | 컨텍스트 백업 |
 | `next` | — | 다음 단계 진행 |
@@ -115,7 +113,7 @@ novel_forge_claude/
 │   └── {소설제목}/
 │       ├── state.json      # 워크플로우 상태
 │       ├── context/        # 활성 컨텍스트 (6개 md 파일)
-│       ├── episodes/       # 완성 원고 (ep001.md, ep002a.md, ...)
+│       ├── episodes/       # 완성 원고 (ep001.md, ep002.md, ...)
 │       ├── drafts/         # 작업 중 초안
 │       └── backup/         # 컨텍스트 백업
 ├── CLAUDE.md               # Claude Code 행동 매뉴얼

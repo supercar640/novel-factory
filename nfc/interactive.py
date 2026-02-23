@@ -15,7 +15,7 @@ from . import display
 TITLE_PATTERN = re.compile(r"^[a-zA-Z0-9_ -]+$")
 
 NO_ARG_COMMANDS = frozenset({
-    "status", "items", "next", "approve", "reject", "retry", "regen",
+    "status", "items", "next", "approve", "reject", "retry",
     "confirm-end", "context-update", "context-backup",
     "quit", "exit",
 })
@@ -28,7 +28,6 @@ ALIASES = {
     "r": "retry",
     "a": "approve",
     "m": "revise",
-    "g": "regen",
     "c": "confirm-end",
 }
 
@@ -211,18 +210,16 @@ def handle_command(pf: ProjectFiles, state: ProjectState, cmd: str, kwargs: dict
     # next needs special handling (episode auto-save)
     if cmd == "next":
         if state.step == Step.COMPLETE.value and state.draft_files:
-            from .cli import _episode_suffix
-            episode_num = state.episode_count + 1
-            total = len(state.draft_files)
+            base_num = state.episode_count + 1
             for i, df in enumerate(state.draft_files):
+                episode_num = base_num + i
                 draft_path = pf.root / df
-                suffix = _episode_suffix(i, total)
                 if draft_path.exists():
                     content = draft_path.read_text(encoding="utf-8")
-                    ep_path = pf.save_episode(episode_num, content, suffix=suffix)
+                    ep_path = pf.save_episode(episode_num, content)
                     print(display.ok("episode saved: " + ep_path.name))
                 else:
-                    ep_name = f"ep{episode_num:03d}{suffix}.md"
+                    ep_name = f"ep{episode_num:03d}.md"
                     print(display.ok("episode: episodes/" + ep_name + " (no draft file - manual save needed)"))
 
     # General action flow

@@ -15,7 +15,7 @@ VALID_ACTIONS: dict[tuple[str, str], list[str]] = {
     (Phase.PHASE1.value, Step.CONTEXT_CREATION.value): ["next"],
     # Phase 2
     (Phase.PHASE2.value, Step.DEVELOPMENT_PROPOSAL.value): ["add", "next"],
-    (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value): ["items", "select", "hold", "discard", "retry", "regen", "confirm-end"],
+    (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value): ["items", "select", "hold", "discard", "retry", "confirm-end"],
     (Phase.PHASE2.value, Step.DEVELOPMENT_CONFIRM.value): ["approve", "reject"],
     # Phase 3
     (Phase.PHASE3.value, Step.STYLE_SETUP.value): ["config", "next"],
@@ -44,7 +44,7 @@ TRANSITIONS: dict[tuple[str, str, str], tuple[str, str]] = {
     # Phase 2
     (Phase.PHASE2.value, Step.DEVELOPMENT_PROPOSAL.value, "next"): (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value),
     (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value, "retry"): (Phase.PHASE2.value, Step.DEVELOPMENT_PROPOSAL.value),
-    (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value, "regen"): (Phase.PHASE2.value, Step.DEVELOPMENT_PROPOSAL.value),
+    (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value, "select"): (Phase.PHASE2.value, Step.DEVELOPMENT_CONFIRM.value),
     (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value, "confirm-end"): (Phase.PHASE2.value, Step.DEVELOPMENT_CONFIRM.value),
     (Phase.PHASE2.value, Step.DEVELOPMENT_CONFIRM.value, "approve"): (Phase.PHASE3.value, Step.STYLE_SETUP.value),
     (Phase.PHASE2.value, Step.DEVELOPMENT_CONFIRM.value, "reject"): (Phase.PHASE2.value, Step.DEVELOPMENT_DECISION.value),
@@ -94,20 +94,11 @@ def validate_action(state: ProjectState, action: str, **kwargs) -> str | None:
             if item.status == ItemStatus.DISCARDED.value:
                 return f"항목 {item_id}은(는) 폐기된 항목입니다."
 
-        if state.phase == Phase.PHASE1.value:
-            if len(item_ids) != 1:
-                return "Phase 1에서는 정확히 1개만 선택할 수 있습니다."
-        elif state.phase == Phase.PHASE2.value:
-            current_selected = state.selected_count()
-            if current_selected + len(item_ids) > 3:
-                return f"Phase 2에서는 최대 3개까지 선택 가능합니다. (현재 {current_selected}개 선정됨)"
-
-    if action == "regen":
-        selected = state.selected_count()
-        if selected < 1:
-            return "최소 1개 이상 선정한 후 재생성할 수 있습니다. 전체 재생성은 'retry'를 사용하세요."
-        if selected >= 3:
-            return "이미 3개를 선정했습니다. 'confirm-end'로 선정을 종료하세요."
+        if len(item_ids) != 1:
+            return "정확히 1개만 선택할 수 있습니다."
+        if state.phase == Phase.PHASE2.value:
+            if state.selected_count() > 0:
+                return "이미 1개를 선정했습니다."
 
     if action == "confirm-end":
         if state.selected_count() < 1:
@@ -136,15 +127,12 @@ def validate_action(state: ProjectState, action: str, **kwargs) -> str | None:
         if state.phase == Phase.PHASE2.value and state.step == Step.DEVELOPMENT_PROPOSAL.value:
             if not state.items:
                 return "전개 옵션을 추가한 후 진행하세요."
-        # mode_selection: 모든 전개에 작성 모드가 설정되어야 진행
+        # mode_selection: writing_mode 또는 auto_write가 설정되어야 진행
         if state.step == Step.MODE_SELECTION.value:
-            modes = state.config.get("writing_modes", {})
-            dev_count = len(state.selected_developments)
-            if dev_count == 0:
-                dev_count = 1  # 전개가 비어있으면 최소 1개로 간주
-            missing = [str(i) for i in range(1, dev_count + 1) if str(i) not in modes]
-            if missing:
-                return f"전개 {', '.join(missing)}의 작성 모드를 설정해 주세요. (config writing_mode_N scene|episode)"
+            writing_mode = state.config.get("writing_mode")
+            auto_write = state.config.get("auto_write", False)
+            if not writing_mode and not auto_write:
+                return "작성 모드를 설정해 주세요. (config writing_mode scene|episode / config auto_write true)"
         # writing/proofreading: draft_files 필요
         if state.step in (Step.WRITING.value, Step.PROOFREADING.value):
             if not state.draft_files:
@@ -175,17 +163,18 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
             item.status = ItemStatus.SELECTED.value
             selected_texts.append(display.format_item_short(item))
 
-        # Phase 1: select triggers transition
-        if state.phase == Phase.PHASE1.value:
-            next_phase, next_step = TRANSITIONS[(state.phase, state.step, "select")]
-            state.phase = next_phase
-            state.step = next_step
-            msg = display.ok(f"선정: {', '.join(selected_texts)}")
-            msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
-            return state, msg
+        # Phase 1 & Phase 2: select triggers transition
+        next_phase, next_step = TRANSITIONS[(state.phase, state.step, "select")]
+        state.phase = next_phase
+        state.step = next_step
 
-        # Phase 2: select stays in decision step
-        msg = display.ok(f"선정: {', '.join(selected_texts)} (총 {state.selected_count()}/3)")
+        # Phase 2: 선정된 전개를 selected_developments에 저장
+        if state.phase == Phase.PHASE2.value:
+            selected = [item.text for item in state.items if item.status == ItemStatus.SELECTED.value]
+            state.selected_developments = selected
+
+        msg = display.ok(f"선정: {', '.join(selected_texts)}")
+        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
         return state, msg
 
     if action == "hold":
@@ -206,17 +195,6 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.phase = next_phase
         state.step = next_step
         return state, display.ok("전체 폐기 후 재생성 대기. 새로운 항목을 추가(add)하세요.")
-
-    if action == "regen":
-        selected = [item for item in state.items if item.status == ItemStatus.SELECTED.value]
-        remaining = 3 - len(selected)
-        state.items = selected
-        next_phase, next_step = TRANSITIONS[(state.phase, state.step, "regen")]
-        state.phase = next_phase
-        state.step = next_step
-        msg = display.ok(f"선정 {len(selected)}개 유지, 나머지 폐기. {remaining}개 슬롯에 대한 새 옵션을 추가(add)하세요.")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
-        return state, msg
 
     if action == "approve":
         next_phase, next_step = TRANSITIONS[(state.phase, state.step, "approve")]
@@ -268,20 +246,18 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
     if action == "config":
         key = kwargs.get("key", "")
         value = kwargs.get("value", "")
-        # writing_mode_N 패턴 처리 (전개별 작성 모드)
-        import re
-        wm_match = re.match(r"^writing_mode_(\d+)$", key)
-        if wm_match:
-            idx = wm_match.group(1)
+        if key == "writing_mode":
             if value not in ("scene", "episode"):
                 return state, display.error("writing_mode는 'scene' 또는 'episode'만 가능합니다.")
-            dev_count = len(state.selected_developments)
-            if dev_count > 0 and int(idx) > dev_count:
-                return state, display.error(f"전개는 {dev_count}개입니다. (1~{dev_count})")
-            state.config.setdefault("writing_modes", {})[idx] = value
-            return state, display.ok(f"설정 변경: 전개 {idx} 작성모드 = {value}")
+            state.config["writing_mode"] = value
+            return state, display.ok(f"설정 변경: 작성모드 = {value}")
+        if key == "auto_write":
+            if value.lower() not in ("true", "false"):
+                return state, display.error("auto_write는 'true' 또는 'false'만 가능합니다.")
+            state.config["auto_write"] = value.lower() == "true"
+            return state, display.ok(f"설정 변경: 자동작성 = {state.config['auto_write']}")
         if key not in ("style_reference",):
-            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode_N")
+            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode, auto_write")
         state.config[key] = value
         return state, display.ok(f"설정 변경: {key} = {value}")
 
@@ -302,11 +278,13 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
 
         # Phase 4 complete → Phase 2: 에피소드 카운트 증가, items 초기화
         if state.step == Step.COMPLETE.value:
-            state.episode_count += 1
+            state.episode_count += max(len(state.draft_files), 1)
             state.items = []
             state.selected_developments = []
             state.draft_files = []
             state.revision_feedback = None
+            state.config["writing_mode"] = None
+            state.config["auto_write"] = False
 
         # Phase 1 context_creation → Phase 2: items 초기화
         if state.step == Step.CONTEXT_CREATION.value:

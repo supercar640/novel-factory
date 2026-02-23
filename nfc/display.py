@@ -80,15 +80,24 @@ def format_status(state: ProjectState) -> str:
 
     if state.config.get("style_reference"):
         lines.append(f"문체:     {state.config['style_reference']}")
-    writing_modes = state.config.get("writing_modes", {})
-    if writing_modes:
+    writing_mode = state.config.get("writing_mode")
+    auto_write = state.config.get("auto_write", False)
+    if writing_mode or auto_write:
         def _mode_label(m: str) -> str:
-            return "장면별" if m == "scene" else "1화 분량"
-        if len(writing_modes) == 1:
-            lines.append(f"작성모드: {_mode_label(list(writing_modes.values())[0])}")
-        else:
-            parts = [f"전개{k}-{_mode_label(v)}" for k, v in sorted(writing_modes.items())]
-            lines.append(f"작성모드: {' / '.join(parts)}")
+            if m == "scene":
+                return "장면별"
+            elif m == "episode":
+                return "1화 분량"
+            return m or ""
+        parts = []
+        if auto_write:
+            parts.append("자동작성(3화)")
+        if writing_mode:
+            parts.append(_mode_label(writing_mode))
+        mode_str = " + ".join(parts)
+        if auto_write and writing_mode:
+            mode_str += "  (병렬)"
+        lines.append(f"작성모드: {mode_str}")
     if state.revision_feedback:
         lines.append(f"수정요청: {state.revision_feedback}")
     if state.draft_files:
@@ -119,7 +128,7 @@ def format_items(state: ProjectState) -> str:
 
     selected = state.selected_count()
     if state.phase == Phase.PHASE2.value:
-        lines.append(f"\n선정: {selected}/3")
+        lines.append(f"\n선정: {selected}/1")
 
     return "\n".join(lines)
 

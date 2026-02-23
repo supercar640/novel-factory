@@ -79,7 +79,7 @@ class ProjectState:
     context_version: int = 0
     items: list[Item] = field(default_factory=list)
     selected_developments: list[str] = field(default_factory=list)
-    config: dict = field(default_factory=lambda: {"style_reference": None, "writing_modes": {}})
+    config: dict = field(default_factory=lambda: {"style_reference": None, "writing_mode": None, "auto_write": False})
     revision_feedback: Optional[str] = None
     draft_files: list[str] = field(default_factory=list)
 
@@ -110,7 +110,7 @@ class ProjectState:
             context_version=d.get("context_version", 0),
             items=items,
             selected_developments=d.get("selected_developments", []),
-            config=cls._migrate_config(d.get("config", {"style_reference": None, "writing_modes": {}})),
+            config=cls._migrate_config(d.get("config", {"style_reference": None, "writing_mode": None, "auto_write": False})),
             revision_feedback=d.get("revision_feedback"),
             draft_files=cls._migrate_draft_files(d),
         )
@@ -125,15 +125,25 @@ class ProjectState:
 
     @staticmethod
     def _migrate_config(config: dict) -> dict:
-        """기존 writing_mode(단일) → writing_modes(dict) 마이그레이션."""
-        if "writing_mode" in config and "writing_modes" not in config:
-            old = config.pop("writing_mode")
-            config["writing_modes"] = {"1": old} if old else {}
-        if "writing_modes" not in config:
-            config["writing_modes"] = {}
-        # writing_mode 키가 남아있으면 제거
-        config.pop("writing_mode", None)
+        """v1.0 writing_modes(dict) / v0.x writing_mode(str) → v2.0 writing_mode + auto_write 마이그레이션."""
+        # v1.0: writing_modes dict → 첫 번째 값을 writing_mode로 변환
+        if "writing_modes" in config:
+            modes = config.pop("writing_modes")
+            if modes and "writing_mode" not in config:
+                first_mode = list(modes.values())[0] if modes else None
+                config["writing_mode"] = first_mode
+        # writing_mode가 없으면 기본값
+        if "writing_mode" not in config:
+            config["writing_mode"] = None
+        # auto_write가 없으면 기본값
+        if "auto_write" not in config:
+            config["auto_write"] = False
         return config
+
+    @property
+    def selected_development(self) -> Optional[str]:
+        """선정된 전개 중 첫 번째 반환 (v2.0: 항상 1개)."""
+        return self.selected_developments[0] if self.selected_developments else None
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, indent=2)

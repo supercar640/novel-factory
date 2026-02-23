@@ -41,7 +41,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_discard.add_argument("id", type=int, help="item ID")
 
     sub.add_parser("retry", help="retry all")
-    sub.add_parser("regen", help="regenerate unselected (Phase 2)")
     sub.add_parser("approve", help="approve")
 
     p_revise = sub.add_parser("revise", help="revise")
@@ -113,8 +112,6 @@ def main(argv=None):
         run_action(pf, state, "discard", item_id=args.id)
     elif args.command == "retry":
         run_action(pf, state, "retry")
-    elif args.command == "regen":
-        run_action(pf, state, "regen")
     elif args.command == "approve":
         run_action(pf, state, "approve")
     elif args.command == "revise":
@@ -158,27 +155,19 @@ def handle_init(args):
         sys.exit(1)
 
 
-def _episode_suffix(index: int, total: int) -> str:
-    """복수 전개 시 접미사 반환: 1개면 빈 문자열, 2개 이상이면 a,b,c..."""
-    if total <= 1:
-        return ""
-    return chr(ord("a") + index)
-
-
 def handle_next(pf, state):
-    # complete -> Phase 2: save episode(s) automatically
+    # complete -> Phase 2: save episode(s) automatically with sequential numbering
     if state.step == Step.COMPLETE.value and state.draft_files:
-        episode_num = state.episode_count + 1
-        total = len(state.draft_files)
+        base_num = state.episode_count + 1
         for i, df in enumerate(state.draft_files):
+            episode_num = base_num + i
             draft_path = pf.root / df
-            suffix = _episode_suffix(i, total)
             if draft_path.exists():
                 content = draft_path.read_text(encoding="utf-8")
-                ep_path = pf.save_episode(episode_num, content, suffix=suffix)
+                ep_path = pf.save_episode(episode_num, content)
                 print(display.ok("episode saved: " + ep_path.name))
             else:
-                ep_name = f"ep{episode_num:03d}{suffix}.md"
+                ep_name = f"ep{episode_num:03d}.md"
                 print(display.ok("episode: episodes/" + ep_name + " (no draft file - manual save needed)"))
     run_action(pf, state, "next")
 

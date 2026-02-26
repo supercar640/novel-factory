@@ -40,6 +40,7 @@ Phase 1: 컨텍스트 수립 (최초 1회)
   │                    ↓                                │
   │  Phase 3: 집필                                       │
   │    문체 설정 → 작성 모드 선택 → 원고 작성 → PD 승인    │
+  │    (scene 모드: 장면별 검토 → merge-episode → 승인)   │
   │                    ↓                                │
   │  Phase 4: 퇴고 및 컨텍스트 갱신                       │
   │    퇴고 → PD 승인 → 컨텍스트 업데이트 → Phase 2로 복귀 │
@@ -102,6 +103,8 @@ python nfc.py <command>
 | `import-context` | — | 기존 컨텍스트 파일 임포트 (v1.5) |
 | `pd-proofread <file>` | — | PD 자체 퇴고 원고 등록 (v1.5) |
 | `switch-auto` | — | 자동작성 모드로 전환 (v1.5) |
+| `merge-episode` | — | 장면들을 에피소드로 병합 (scene 모드, 5,500자 이상) |
+| `scenes` | — | 장면 목록 및 글자 수 표시 (scene 모드) |
 
 ## 프로젝트 구조
 

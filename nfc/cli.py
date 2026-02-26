@@ -176,8 +176,8 @@ def handle_init(args):
 
 
 def handle_next(pf, state):
-    # complete -> Phase 2: save episode(s) automatically with prefix-based naming
-    if state.step == Step.COMPLETE.value and state.draft_files:
+    # context_update -> context_size_check: save episode(s) early for safety
+    if state.step == Step.CONTEXT_UPDATE.value and state.draft_files:
         pd_num = state.episode_count + 1
         auto_num = state.episode_count + 1
         for df in list(dict.fromkeys(state.draft_files)):

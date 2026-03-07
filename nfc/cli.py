@@ -18,6 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="nfc",
         description="Novel Forge Claude - CLI",
     )
+    parser.add_argument("--project", "-P", default=None,
+                        help="프로젝트 디렉토리명 지정")
     sub = parser.add_subparsers(dest="command", help="command")
 
     p_init = sub.add_parser("init", help="new project")
@@ -81,10 +83,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_project():
-    root = find_project_root()
+def load_project(project_name=None):
+    root = find_project_root(project_name=project_name)
     if root is None:
-        print(display.error("project not found. use 'nfc init <name>'"))
+        msg = "project not found. use 'nfc init <name>'"
+        if project_name:
+            msg = f"project '{project_name}' not found."
+        print(display.error(msg))
         sys.exit(1)
     pf = ProjectFiles.load(root)
     state = pf.read_state()
@@ -136,7 +141,7 @@ def main(argv=None):
         handle_init(args)
         return
 
-    pf, state = load_project()
+    pf, state = load_project(project_name=args.project)
 
     if args.command == "status":
         print(display.format_status(state))

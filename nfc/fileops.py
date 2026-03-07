@@ -10,27 +10,47 @@ from typing import Optional
 from .models import ProjectState
 
 
-def find_project_root(start: Optional[Path] = None) -> Optional[Path]:
-    """현재 디렉토리에서 state.json을 찾아 프로젝트 루트를 반환."""
+def find_project_root(start: Optional[Path] = None,
+                      project_name: Optional[str] = None) -> Optional[Path]:
+    """현재 디렉토리에서 state.json을 찾아 프로젝트 루트를 반환.
+
+    여러 프로젝트가 있으면 state.json 수정 시간 기준 최신 프로젝트를 반환.
+    project_name이 지정되면 해당 디렉토리명의 프로젝트만 반환.
+    """
     cwd = start or Path.cwd()
-    state_file = cwd / "state.json"
-    if state_file.exists():
+    # 현재 디렉토리에 state.json이 있으면 바로 반환
+    if (cwd / "state.json").exists():
         return cwd
+
+    candidates: list[Path] = []
+
     # projects/ 하위 디렉토리 탐색 (우선)
     projects_dir = cwd / "projects"
     if projects_dir.is_dir():
         for child in projects_dir.iterdir():
             if child.is_dir() and (child / "state.json").exists():
-                return child
+                if project_name and child.name != project_name:
+                    continue
+                candidates.append(child)
+
     # 하위 디렉토리 중 state.json이 있는 곳 탐색 (1레벨만, 레거시 호환)
-    for child in cwd.iterdir():
-        if child.is_dir() and (child / "state.json").exists():
-            return child
-    return None
+    if not candidates:
+        for child in cwd.iterdir():
+            if child.is_dir() and child != projects_dir and (child / "state.json").exists():
+                if project_name and child.name != project_name:
+                    continue
+                candidates.append(child)
+
+    if not candidates:
+        return None
+
+    # state.json 수정 시간 기준 최신 프로젝트 반환
+    candidates.sort(key=lambda p: (p / "state.json").stat().st_mtime, reverse=True)
+    return candidates[0]
 
 
 def find_all_projects(start: Optional[Path] = None) -> list[Path]:
-    """모든 프로젝트 디렉토리 목록 반환."""
+    """모든 프로젝트 디렉토리 목록 반환 (최근 수정순)."""
     cwd = start or Path.cwd()
     results = []
     # projects/ 하위 탐색
@@ -43,6 +63,8 @@ def find_all_projects(start: Optional[Path] = None) -> list[Path]:
     for child in cwd.iterdir():
         if child.is_dir() and child != projects_dir and (child / "state.json").exists():
             results.append(child)
+    # state.json 수정 시간 기준 정렬 (최신 먼저)
+    results.sort(key=lambda p: (p / "state.json").stat().st_mtime, reverse=True)
     return results
 
 

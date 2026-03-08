@@ -231,11 +231,12 @@ def _handle_writing_hold(pf, state):
         draft_path = pf.root / df
         if draft_path.exists():
             content = draft_path.read_text(encoding="utf-8")
-            filename = f"draft_{Path(df).name}"
+            ep_num = state.episode_count + 1
+            filename = f"draft_ep{ep_num:03d}_{Path(df).name}"
             target = shelve_dir / filename
             counter = 1
             while target.exists():
-                filename = f"draft_{Path(df).stem}_{counter}.md"
+                filename = f"draft_ep{ep_num:03d}_{Path(df).stem}_{counter}.md"
                 target = shelve_dir / filename
                 counter += 1
             target.write_text(content, encoding="utf-8")
@@ -321,6 +322,14 @@ def handle_next(pf, state):
 
 def handle_save(pf, state, args):
     filepath = args.file
+    # proofread 저장 시: 기존 manuscript draft 내용을 proofread 파일로 복사
+    if args.type == "proofread" and state.draft_files:
+        import shutil
+        src_path = pf.root / state.draft_files[-1]
+        dst_path = pf.root / filepath
+        if src_path.exists() and src_path.resolve() != dst_path.resolve():
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(src_path), str(dst_path))
     run_action(pf, state, "save", filepath=filepath, save_type=args.type)
 
 

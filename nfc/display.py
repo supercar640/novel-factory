@@ -5,10 +5,10 @@ from __future__ import annotations
 from .models import Phase, Step, ItemStatus, ProjectState, Item
 
 PHASE_LABELS = {
-    Phase.PHASE1.value: "Phase 1: 컨텍스트 수립",
-    Phase.PHASE2.value: "Phase 2: 전개 선정",
-    Phase.PHASE3.value: "Phase 3: 집필",
-    Phase.PHASE4.value: "Phase 4: 퇴고 및 컨텍스트 갱신",
+    Phase.PHASE1.value: "P1:컨텍스트",
+    Phase.PHASE2.value: "P2:전개선정",
+    Phase.PHASE3.value: "P3:집필",
+    Phase.PHASE4.value: "P4:퇴고",
 }
 
 STEP_LABELS = {
@@ -19,15 +19,15 @@ STEP_LABELS = {
     Step.PLAN_DECISION.value: "기획안 검토",
     Step.CONTEXT_CREATION.value: "컨텍스트 생성",
     # Phase 1 - v1.5 import
-    Step.IMPORT_ANALYSIS.value: "원고 분석 및 컨텍스트 생성",
-    Step.IMPORT_REVIEW.value: "임포트 컨텍스트 검토",
+    Step.IMPORT_ANALYSIS.value: "원고 분석",
+    Step.IMPORT_REVIEW.value: "임포트 검토",
     # Phase 2
     Step.DEVELOPMENT_PROPOSAL.value: "전개 옵션 생성",
     Step.DEVELOPMENT_DECISION.value: "전개 선정",
-    Step.DEVELOPMENT_CONFIRM.value: "전개 선정 확인",
+    Step.DEVELOPMENT_CONFIRM.value: "전개 확인",
     # Phase 3
     Step.STYLE_SETUP.value: "문체 설정",
-    Step.MODE_SELECTION.value: "작성 모드 선택",
+    Step.MODE_SELECTION.value: "모드 선택",
     Step.WRITING.value: "집필",
     Step.SCENE_DECISION.value: "장면 검토",
     Step.WRITING_DECISION.value: "원고 검토",
@@ -35,15 +35,8 @@ STEP_LABELS = {
     Step.PROOFREADING.value: "퇴고",
     Step.PROOFREAD_DECISION.value: "퇴고 검토",
     Step.CONTEXT_UPDATE.value: "컨텍스트 갱신",
-    Step.CONTEXT_SIZE_CHECK.value: "컨텍스트 크기 점검",
-    Step.COMPLETE.value: "회차 완료",
-}
-
-STATUS_LABELS = {
-    ItemStatus.PROPOSED.value: "제안됨",
-    ItemStatus.SELECTED.value: "선정됨",
-    ItemStatus.HELD.value: "보류",
-    ItemStatus.DISCARDED.value: "폐기됨",
+    Step.CONTEXT_SIZE_CHECK.value: "크기 점검",
+    Step.COMPLETE.value: "완료",
 }
 
 STATUS_MARKERS = {
@@ -59,7 +52,7 @@ def ok(msg: str) -> str:
 
 
 def error(msg: str) -> str:
-    return f"[ERROR] {msg}"
+    return f"[ERR] {msg}"
 
 
 def step_msg(msg: str) -> str:
@@ -67,82 +60,75 @@ def step_msg(msg: str) -> str:
 
 
 def transition(msg: str) -> str:
-    return f"[TRANSITION] {msg}"
+    return f"→ {msg}"
 
 
 def format_status(state: ProjectState) -> str:
-    """현재 상태를 포맷팅하여 반환."""
+    """현재 상태를 간결하게 포맷팅."""
     phase_label = PHASE_LABELS.get(state.phase, state.phase)
     step_label = STEP_LABELS.get(state.step, state.step)
 
-    lines = [
-        f"프로젝트: {state.project_name}",
-        f"Phase:    {phase_label}",
-        f"Step:     {step_label}",
-        f"에피소드: {state.episode_count}화",
-    ]
+    # 한 줄 핵심 상태
+    line = f"{phase_label} > {step_label} | ep:{state.episode_count}"
 
+    # 조건부 추가 정보 (있을 때만, 한 줄로)
+    extras = []
     if state.revision_mode:
-        lines.append(f"수정모드: {state.revision_episode} 수정 중")
+        extras.append(f"수정:{state.revision_episode}")
     if state.scene_count > 0:
-        lines.append(f"장면:     {state.scene_count}개 완료")
+        extras.append(f"장면:{state.scene_count}")
     if state.import_file:
-        lines.append(f"임포트:   {state.import_file}")
+        extras.append(f"임포트:{state.import_file}")
     if state.config.get("style_reference"):
-        lines.append(f"문체:     {state.config['style_reference']}")
+        extras.append(f"문체:{state.config['style_reference']}")
     writing_mode = state.config.get("writing_mode")
     auto_write = state.config.get("auto_write", False)
-    if writing_mode or auto_write:
-        def _mode_label(m: str) -> str:
-            if m == "scene":
-                return "장면별"
-            elif m == "episode":
-                return "1화 분량"
-            return m or ""
-        parts = []
-        if auto_write:
-            parts.append("자동작성(3화)")
-        if writing_mode:
-            parts.append(_mode_label(writing_mode))
-        mode_str = " + ".join(parts)
-        lines.append(f"작성모드: {mode_str}")
+    if auto_write:
+        extras.append("auto")
+    elif writing_mode:
+        extras.append(f"mode:{writing_mode}")
     if state.revision_feedback:
-        lines.append(f"수정요청: {state.revision_feedback}")
+        extras.append(f"피드백:\"{state.revision_feedback}\"")
     if state.draft_files:
-        if len(state.draft_files) == 1:
-            lines.append(f"초안파일: {state.draft_files[0]}")
-        else:
-            lines.append(f"초안파일: {', '.join(state.draft_files)}")
+        extras.append(f"drafts:[{','.join(state.draft_files)}]")
 
+    if extras:
+        line += " | " + " | ".join(extras)
+
+    # 가능한 명령 (간결하게)
     from .state import get_valid_actions
     actions = get_valid_actions(state)
     if actions:
-        lines.append(f"가능한 명령: {', '.join(actions)}")
+        line += f"\ncmd: {','.join(actions)}"
 
-    return "\n".join(lines)
+    return line
 
 
 def format_items(state: ProjectState) -> str:
-    """항목 목록을 포맷팅하여 반환."""
+    """항목 목록: 활성 항목만 표시 (폐기 항목 제외)."""
     if not state.items:
-        return "등록된 항목이 없습니다."
+        return "(항목 없음)"
 
     lines = []
     for item in state.items:
+        # 폐기된 항목은 표시하지 않음
+        if item.status == ItemStatus.DISCARDED.value:
+            continue
         marker = STATUS_MARKERS.get(item.status, "[ ]")
-        prob_str = f" (prob: {item.probability:.2f})" if item.probability is not None else ""
-        status_label = STATUS_LABELS.get(item.status, item.status)
-        lines.append(f"  {marker} {item.id}. {item.text}{prob_str} — {status_label}")
+        prob_str = f" p:{item.probability:.2f}" if item.probability is not None else ""
+        lines.append(f"  {marker} {item.id}. {item.text}{prob_str}")
 
-    selected = state.selected_count()
+    if not lines:
+        return "(활성 항목 없음)"
+
     if state.phase == Phase.PHASE2.value:
-        lines.append(f"\n선정: {selected}/1")
+        lines.append(f"  선정:{state.selected_count()}/1")
 
     return "\n".join(lines)
 
 def format_item_short(item: Item) -> str:
     """단일 항목을 짧게 포맷팅."""
-    prob_str = f" (prob: {item.probability:.2f})" if item.probability is not None else ""
+    prob_str = f" p:{item.probability:.2f}" if item.probability is not None else ""
     return f"{item.id}. {item.text}{prob_str}"
 
 
@@ -153,9 +139,9 @@ def format_scenes(pf, state: ProjectState) -> str:
 
     scene_files = [df for df in state.draft_files if Path(df).name.startswith("sc")]
     if not scene_files:
-        return "등록된 장면이 없습니다."
+        return "(장면 없음)"
 
-    lines = ["=== 장면 목록 ==="]
+    lines = []
     total_chars = 0
     for i, sf in enumerate(scene_files, 1):
         path = pf.root / sf
@@ -165,8 +151,7 @@ def format_scenes(pf, state: ProjectState) -> str:
             total_chars += char_count
             lines.append(f"  {i}. {Path(sf).name} ({char_count:,}자)")
         else:
-            lines.append(f"  {i}. {Path(sf).name} (파일 없음)")
+            lines.append(f"  {i}. {Path(sf).name} (없음)")
 
-    lines.append("  " + "─" * 20)
-    lines.append(f"  누적: {total_chars:,}자 / 5,500자 기준")
+    lines.append(f"  누적: {total_chars:,}/5,500자")
     return "\n".join(lines)

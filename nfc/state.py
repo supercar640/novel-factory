@@ -225,8 +225,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
             selected = [item.text for item in state.items if item.status == ItemStatus.SELECTED.value]
             state.selected_developments = selected
 
-        msg = display.ok(f"선정: {', '.join(selected_texts)}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg = display.ok(f"선정: {', '.join(selected_texts)}") + " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     if action == "hold":
@@ -238,8 +237,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
             state.step = next_step
             state.draft_files = []
             state.scene_count = 0
-            msg = display.ok(f"초안 보류: {shelve_file}")
-            msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동 (새 초안 작성)")
+            msg = display.ok(f"초안 보류: {shelve_file}") + " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
             return state, msg
         item_id = kwargs.get("item_id")
         item = state.get_item(item_id)
@@ -274,11 +272,10 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         # Scene mode: scene_decision approve → scene_count++, draft_files 유지
         if old_step == Step.SCENE_DECISION.value:
             state.scene_count += 1
-            msg = display.ok(f"장면 {state.scene_count} 승인 완료")
-            msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동 (다음 장면)")
+            msg = display.ok(f"장면 {state.scene_count} 승인") + " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
             return state, msg
         msg = display.ok("승인 완료")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     if action == "revise":
@@ -299,7 +296,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         else:
             state.draft_files = []
         msg = display.ok(f"수정 요청: {feedback}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     if action == "reject":
@@ -322,7 +319,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         if old_step == Step.IMPORT_REVIEW.value:
             state.import_file = None
         msg = display.ok("폐기됨")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     if action == "confirm-end":
@@ -332,8 +329,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         next_phase, next_step = TRANSITIONS[(state.phase, state.step, "confirm-end")]
         state.phase = next_phase
         state.step = next_step
-        msg = display.ok(f"전개 {len(selected)}개 선정 완료. 종료 확인 대기.")
-        msg += "\n" + display.step_msg("전개 선정을 종료하시겠습니까? (approve/reject)")
+        msg = display.ok(f"전개 {len(selected)}개 선정. approve/reject?")
         return state, msg
 
     if action == "save":
@@ -390,7 +386,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.step = next_step
         state.items = []
         msg = display.ok(f"원고 임포트: {filepath}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     # v1.5: import-context
@@ -402,7 +398,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.draft_files = []
         state.import_file = None
         msg = display.ok("기존 컨텍스트 임포트 완료")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     # v1.5: pd-proofread
@@ -414,7 +410,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.phase = next_phase
         state.step = next_step
         msg = display.ok(f"PD 퇴고 원고 등록: {filepath}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동 (AI 퇴고 생략)")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     # v1.7: revise-episode (과거 회차 재수정)
@@ -430,7 +426,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.phase = next_phase
         state.step = next_step
         msg = display.ok(f"에피소드 수정 모드: {original_episode}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     # v1.5: switch-auto
@@ -448,7 +444,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.phase = next_phase
         state.step = next_step
         msg = display.ok(f"장면 병합 완료: {merged_file}")
-        msg += "\n" + display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg += " " + display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
 
     # Scene mode: scenes (상태 변경 없음, 표시만)
@@ -526,20 +522,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         state.phase = next_phase
         state.step = next_step
 
-        msg = display.transition(f"{display.STEP_LABELS.get(state.step, state.step)}(으)로 이동")
+        msg = display.transition(display.STEP_LABELS.get(state.step, state.step))
         return state, msg
-
-    return state, 
-
-
-
-
-
-
-
-
-
-
-
 
     return state, display.error(f"알 수 없는 명령: {action}")

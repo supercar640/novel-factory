@@ -14,17 +14,32 @@ def find_project_root(start: Optional[Path] = None,
                       project_name: Optional[str] = None) -> Optional[Path]:
     """현재 디렉토리에서 state.json을 찾아 프로젝트 루트를 반환.
 
-    여러 프로젝트가 있으면 state.json 수정 시간 기준 최신 프로젝트를 반환.
-    project_name이 지정되면 해당 디렉토리명의 프로젝트만 반환.
+    탐색 우선순위:
+    1. cwd 자체에 state.json이 있으면 즉시 반환
+    2. cwd가 프로젝트 디렉토리 내부이면 해당 프로젝트 반환 (CWD 기반 감지)
+    3. project_name 지정 시 이름으로 필터
+    4. 후보가 1개면 바로 반환
+    5. 여러 프로젝트가 있으면 state.json 수정 시간 기준 최신 반환
     """
     cwd = start or Path.cwd()
-    # 현재 디렉토리에 state.json이 있으면 바로 반환
+    # 1. 현재 디렉토리에 state.json이 있으면 바로 반환
     if (cwd / "state.json").exists():
         return cwd
 
+    # 2. CWD 기반 감지: cwd가 프로젝트 디렉토리 내부인지 확인
+    #    cwd에서 위로 올라가며 state.json이 있는 프로젝트 루트를 찾음
+    for parent in cwd.parents:
+        if (parent / "state.json").exists():
+            if project_name and parent.name != project_name:
+                break  # 이름 불일치면 아래 탐색으로
+            return parent
+        # NFC 루트(projects/ 폴더가 있는 곳)에 도달하면 중단
+        if (parent / "projects").is_dir():
+            break
+
     candidates: list[Path] = []
 
-    # projects/ 하위 디렉토리 탐색 (우선)
+    # 3. projects/ 하위 디렉토리 탐색 (우선)
     projects_dir = cwd / "projects"
     if projects_dir.is_dir():
         for child in projects_dir.iterdir():
@@ -33,7 +48,7 @@ def find_project_root(start: Optional[Path] = None,
                     continue
                 candidates.append(child)
 
-    # 하위 디렉토리 중 state.json이 있는 곳 탐색 (1레벨만, 레거시 호환)
+    # 4. 하위 디렉토리 중 state.json이 있는 곳 탐색 (1레벨만, 레거시 호환)
     if not candidates:
         for child in cwd.iterdir():
             if child.is_dir() and child != projects_dir and (child / "state.json").exists():
@@ -44,7 +59,10 @@ def find_project_root(start: Optional[Path] = None,
     if not candidates:
         return None
 
-    # state.json 수정 시간 기준 최신 프로젝트 반환
+    # 5. 후보가 1개면 바로 반환, 여러 개면 mtime 기준 최신 반환
+    if len(candidates) == 1:
+        return candidates[0]
+
     candidates.sort(key=lambda p: (p / "state.json").stat().st_mtime, reverse=True)
     return candidates[0]
 

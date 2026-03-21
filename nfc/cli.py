@@ -131,7 +131,19 @@ def check_draft_length(pf, state):
 
 def main(argv=None):
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args, remaining = parser.parse_known_args(argv)
+
+    # --project/-P가 서브커맨드 뒤에 온 경우 추출
+    if remaining and not args.project:
+        _sub = argparse.ArgumentParser(add_help=False)
+        _sub.add_argument("--project", "-P", default=None)
+        _sub_args, leftover = _sub.parse_known_args(remaining)
+        if _sub_args.project:
+            args.project = _sub_args.project
+            remaining = leftover
+    # 인식되지 않은 인자가 남아있으면 기존 파서로 에러 출력
+    if remaining:
+        parser.parse_args(argv)
 
     if args.command is None:
         parser.print_help()

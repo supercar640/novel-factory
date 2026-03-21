@@ -25,6 +25,21 @@ python nfc.py init "제목"     # 새 프로젝트 생성
 python nfc.py                 # 인자 없이 실행하면 REPL 진입
 ```
 
+### 멀티 프로젝트
+
+여러 프로젝트를 동시에 작업할 때, 프로젝트 디렉토리에서 CLI를 실행하면 자동으로 해당 프로젝트가 선택된다.
+
+```bash
+# 방법 1: CWD 기반 자동 감지 (권장)
+# IDE에서 프로젝트 폴더를 열고 터미널 사용
+cd projects/my-novel
+python ../../nfc.py status    # my-novel 자동 선택
+
+# 방법 2: --project 옵션으로 명시적 지정
+python nfc.py status --project my-novel
+python nfc.py -P my-novel status
+```
+
 ## 워크플로우
 
 ```

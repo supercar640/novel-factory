@@ -15,8 +15,8 @@ from . import display
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="nfc",
-        description="Novel Forge Claude - CLI",
+        prog="nf",
+        description="Novel Factory - CLI",
     )
     parser.add_argument("--project", "-P", default=None,
                         help="프로젝트 디렉토리명 지정")
@@ -80,13 +80,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_revise_ep = sub.add_parser("revise-episode", help="v1.7: revise a completed episode")
     p_revise_ep.add_argument("file", help="episode file name (e.g., ep001.md)")
 
+    # v2.0: AI provider config
+    p_ai = sub.add_parser("ai-config", help="v2.0: show AI provider config")
+    p_ai_provider = sub.add_parser("ai-provider", help="v2.0: set AI provider for a phase")
+    p_ai_provider.add_argument("provider_type", help="provider type (anthropic/openai/custom)")
+    p_ai_provider.add_argument("--model", "-m", required=True, help="model name")
+    p_ai_provider.add_argument("--phase", default="default",
+                                help="phase to configure (default/phase1/phase2/phase3/phase4)")
+    p_ai_provider.add_argument("--api-key-env", default=None, help="env var name for API key")
+    p_ai_provider.add_argument("--base-url", default=None, help="custom API base URL")
+    p_ai_provider.add_argument("--temperature", type=float, default=None, help="temperature")
+    p_ai_provider.add_argument("--max-tokens", type=int, default=None, help="max tokens")
+
+    p_ai_validate = sub.add_parser("ai-validate", help="v2.0: validate AI provider setup")
+
+    sub.add_parser("ai-mode", help="v2.0: show/toggle standalone vs passthrough mode")
+
     return parser
 
 
 def load_project(project_name=None):
     root = find_project_root(project_name=project_name)
     if root is None:
-        msg = "project not found. use 'nfc init <name>'"
+        msg = "project not found. use 'nf init <name>'"
         if project_name:
             msg = f"project '{project_name}' not found."
         print(display.error(msg))
@@ -211,6 +227,15 @@ def main(argv=None):
         handle_merge_episode(pf, state)
     elif args.command == "scenes":
         handle_scenes(pf, state)
+    # v2.0: AI provider config commands
+    elif args.command == "ai-config":
+        handle_ai_config(pf)
+    elif args.command == "ai-provider":
+        handle_ai_provider(pf, args)
+    elif args.command == "ai-validate":
+        handle_ai_validate(pf)
+    elif args.command == "ai-mode":
+        handle_ai_mode(pf)
     else:
         parser.print_help()
 
@@ -454,3 +479,69 @@ def handle_revise_episode(pf, state, args):
 def handle_scenes(pf, state):
     """장면 목록과 글자 수 표시."""
     print(display.format_scenes(pf, state))
+
+
+# v2.0: AI provider config handlers
+
+def handle_ai_config(pf):
+    """AI 프로바이더 설정 표시."""
+    from .config import load_ai_config, format_config_summary
+    config = load_ai_config(pf.root)
+    print(format_config_summary(config))
+
+
+def handle_ai_provider(pf, args):
+    """Phase별 AI 프로바이더 설정."""
+    from .config import load_ai_config, save_ai_config, PHASE_MAP
+
+    config = load_ai_config(pf.root)
+    provider_entry = {
+        "type": args.provider_type,
+        "model": args.model,
+    }
+    if args.api_key_env:
+        provider_entry["api_key_env"] = args.api_key_env
+    if args.base_url:
+        provider_entry["base_url"] = args.base_url
+    if args.temperature is not None:
+        provider_entry["temperature"] = args.temperature
+    if args.max_tokens is not None:
+        provider_entry["max_tokens"] = args.max_tokens
+
+    phase = args.phase.lower()
+    if phase == "default":
+        config["default_provider"] = provider_entry
+        print(display.ok(f"기본 프로바이더 설정: {args.provider_type}/{args.model}"))
+    else:
+        # Accept both "phase1" and "phase1_planning" formats
+        phase_key = PHASE_MAP.get(phase, phase)
+        if phase_key not in config.get("phase_overrides", {}):
+            print(display.error(f"알 수 없는 Phase: {phase}. 가능: default, phase1, phase2, phase3, phase4"))
+            sys.exit(1)
+        config["phase_overrides"][phase_key] = provider_entry
+        print(display.ok(f"{phase_key} 프로바이더 설정: {args.provider_type}/{args.model}"))
+
+    save_ai_config(pf.root, config)
+
+
+def handle_ai_validate(pf):
+    """모든 Phase의 AI 프로바이더 검증."""
+    from .orchestrator import Orchestrator
+    orch = Orchestrator(pf.root)
+    errors = orch.validate_providers()
+    if errors:
+        for err in errors:
+            print(display.error(err))
+    else:
+        print(display.ok("모든 프로바이더 설정이 유효합니다."))
+
+
+def handle_ai_mode(pf):
+    """standalone/passthrough 모드 표시 및 전환."""
+    from .config import load_ai_config, save_ai_config
+    config = load_ai_config(pf.root)
+    mode = config.get("mode", "passthrough")
+    print(f"현재 모드: {mode}")
+    print("  standalone:   NF가 직접 AI API를 호출합니다.")
+    print("  passthrough:  외부 AI(Claude Code 등)가 콘텐츠를 생성합니다.")
+    print(f"변경하려면: nf config mode standalone|passthrough")

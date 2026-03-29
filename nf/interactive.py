@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Interactive REPL for Novel Forge Claude."""
+"""Interactive REPL for Novel Factory."""
 
 from __future__ import annotations
 
@@ -462,13 +462,13 @@ def print_header(state: ProjectState) -> None:
 
 def run() -> None:
     """Main interactive loop."""
-    print("=== Novel Forge Claude (Interactive) ===\n")
+    print("=== Novel Factory (Interactive) ===\n")
     pf, state = load_or_create()
 
     while True:
         print_header(state)
         try:
-            line = input("\nnfc> ").strip()
+            line = input("\nnf> ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nBye!")
             break

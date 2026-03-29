@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Novel Forge Claude - entry point."""
+"""Novel Factory - entry point."""
 
 import sys
 import io
@@ -18,8 +18,8 @@ if sys.stderr.encoding != "utf-8":
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from nfc.cli import main
-from nfc.interactive import run as interactive_run
+from nf.cli import main
+from nf.interactive import run as interactive_run
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1:

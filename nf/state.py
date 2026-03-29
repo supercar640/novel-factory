@@ -201,7 +201,7 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
         text = kwargs.get("text", "")
         probability = kwargs.get("probability")
         item_id = state.next_item_id()
-        item = __import__("nfc.models", fromlist=["Item"]).Item(
+        item = __import__("nf.models", fromlist=["Item"]).Item(
             id=item_id, text=text, probability=probability
         )
         state.items.append(item)
@@ -364,8 +364,14 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
             if state.config["auto_write"]:
                 state.config["writing_mode"] = None
             return state, display.ok(f"설정 변경: 자동작성 = {state.config['auto_write']}")
+        # v2.0: mode (standalone/passthrough) — ai_config.json에 저장
+        if key == "mode":
+            if value not in ("standalone", "passthrough"):
+                return state, display.error("mode는 'standalone' 또는 'passthrough'만 가능합니다.")
+            # mode는 state.json이 아닌 ai_config.json에 저장
+            return state, display.ok(f"설정 변경: mode = {value} (ai_config.json에 저장하려면 ai-provider 명령 사용)")
         if key not in ("style_reference",):
-            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode, auto_write")
+            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode, auto_write, mode")
         state.config[key] = value
         return state, display.ok(f"설정 변경: {key} = {value}")
 

@@ -95,6 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_ai_validate = sub.add_parser("ai-validate", help="v2.0: validate AI provider setup")
 
     sub.add_parser("ai-mode", help="v2.0: show/toggle standalone vs passthrough mode")
+    sub.add_parser("ai-cost", help="v2.0: show token usage and cost summary")
+    sub.add_parser("ai-cost-reset", help="v2.0: reset cost tracking log")
 
     return parser
 
@@ -236,6 +238,10 @@ def main(argv=None):
         handle_ai_validate(pf)
     elif args.command == "ai-mode":
         handle_ai_mode(pf)
+    elif args.command == "ai-cost":
+        handle_ai_cost(pf)
+    elif args.command == "ai-cost-reset":
+        handle_ai_cost_reset(pf)
     else:
         parser.print_help()
 
@@ -545,3 +551,18 @@ def handle_ai_mode(pf):
     print("  standalone:   NF가 직접 AI API를 호출합니다.")
     print("  passthrough:  외부 AI(Claude Code 등)가 콘텐츠를 생성합니다.")
     print(f"변경하려면: nf config mode standalone|passthrough")
+
+
+def handle_ai_cost(pf):
+    """토큰 사용량 요약 표시."""
+    from .cost_tracker import CostTracker
+    tracker = CostTracker(pf.root)
+    print(tracker.summary())
+
+
+def handle_ai_cost_reset(pf):
+    """비용 추적 로그 초기화."""
+    from .cost_tracker import CostTracker
+    tracker = CostTracker(pf.root)
+    tracker.reset()
+    print(display.ok("비용 추적 로그가 초기화되었습니다."))

@@ -18,6 +18,8 @@ NO_ARG_COMMANDS = frozenset({
     "status", "items", "next", "approve", "reject", "retry",
     "confirm-end", "context-update", "context-backup",
     "import-context", "switch-auto", "merge-episode", "scenes",
+    # v2.0
+    "ai-config", "ai-validate", "ai-mode", "ai-cost", "ai-cost-reset",
     "quit", "exit",
 })
 
@@ -489,11 +491,47 @@ def run() -> None:
         known = NO_ARG_COMMANDS | {
             "add", "select", "hold", "discard", "revise", "config", "save",
             "import-manuscript", "pd-proofread", "merge-episode", "scenes",
-            "revise-episode",
+            "revise-episode", "ai-provider",
         }
         if cmd not in known:
             print(display.error(f"Unknown command: {cmd}"))
             print(f"  Available: {', '.join(sorted(known - {'quit', 'exit'}))}")
             continue
 
+        # v2.0: AI config commands (no state change)
+        if cmd in ("ai-config", "ai-validate", "ai-mode", "ai-cost", "ai-cost-reset"):
+            _handle_ai_command(pf, cmd)
+            continue
+
         state = handle_command(pf, state, cmd, kwargs)
+
+
+def _handle_ai_command(pf: ProjectFiles, cmd: str):
+    """v2.0: AI 관련 명령 처리 (상태 변경 없음)."""
+    if cmd == "ai-config":
+        from .config import load_ai_config, format_config_summary
+        config = load_ai_config(pf.root)
+        print(format_config_summary(config))
+    elif cmd == "ai-validate":
+        from .orchestrator import Orchestrator
+        orch = Orchestrator(pf.root)
+        errors = orch.validate_providers()
+        if errors:
+            for err in errors:
+                print(display.error(err))
+        else:
+            print(display.ok("모든 프로바이더 설정이 유효합니다."))
+    elif cmd == "ai-mode":
+        from .config import load_ai_config
+        config = load_ai_config(pf.root)
+        mode = config.get("mode", "passthrough")
+        print(f"현재 모드: {mode}")
+    elif cmd == "ai-cost":
+        from .cost_tracker import CostTracker
+        tracker = CostTracker(pf.root)
+        print(tracker.summary())
+    elif cmd == "ai-cost-reset":
+        from .cost_tracker import CostTracker
+        tracker = CostTracker(pf.root)
+        tracker.reset()
+        print(display.ok("비용 추적 로그가 초기화되었습니다."))

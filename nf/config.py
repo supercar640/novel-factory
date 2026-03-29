@@ -104,6 +104,29 @@ def create_provider(provider_config: dict) -> AIProvider:
             base_url=provider_config.get("base_url"),
         )
 
+    if provider_type == "google":
+        from .providers.google_provider import GoogleProvider
+        return GoogleProvider(
+            model=model or "gemini-2.0-flash",
+            api_key=api_key,
+            api_key_env=api_key_env or "GOOGLE_API_KEY",
+        )
+
+    if provider_type == "openrouter":
+        from .providers.openrouter_provider import OpenRouterProvider
+        return OpenRouterProvider(
+            model=model or "anthropic/claude-sonnet-4",
+            api_key=api_key,
+            api_key_env=api_key_env or "OPENROUTER_API_KEY",
+        )
+
+    if provider_type == "ollama":
+        from .providers.ollama_provider import OllamaProvider
+        return OllamaProvider(
+            model=model or "llama3.1",
+            base_url=provider_config.get("base_url", "http://localhost:11434/v1"),
+        )
+
     if provider_type == "custom":
         # OpenAI-compatible custom endpoint
         from .providers.openai_provider import OpenAIProvider
@@ -114,7 +137,10 @@ def create_provider(provider_config: dict) -> AIProvider:
             base_url=provider_config.get("base_url", ""),
         )
 
-    raise ValueError(f"Unknown provider type: {provider_type}. Supported: anthropic, openai, custom")
+    raise ValueError(
+        f"Unknown provider type: {provider_type}. "
+        "Supported: anthropic, openai, google, openrouter, ollama, custom"
+    )
 
 
 def get_provider_for_phase(project_root: Path, phase: str) -> AIProvider:

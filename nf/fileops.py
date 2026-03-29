@@ -140,9 +140,24 @@ class ProjectFiles:
         filepath.write_text(content, encoding="utf-8")
         return filepath
 
+    @staticmethod
+    def inject_char_count(content: str) -> str:
+        """첫 번째 # 제목 줄에 (분량: N자) 삽입. 이미 있으면 갱신."""
+        import re
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if line.strip().startswith("#"):
+                # 기존 분량 표기 제거
+                clean = re.sub(r"\s*\(분량:\s*\d+자\)", "", line)
+                char_count = ProjectFiles.count_story_chars(content)
+                lines[i] = f"{clean} (분량: {char_count}자)"
+                break
+        return "\n".join(lines)
+
     def save_episode(self, episode_num: int, content: str, prefix: str = "ep") -> Path:
         """완성 원고 저장. prefix로 트랙 구분 (ep=PD, auto_ep=auto)."""
         self.episodes_dir.mkdir(exist_ok=True)
+        content = self.inject_char_count(content)
         filename = f"{prefix}{episode_num:03d}.md"
         filepath = self.episodes_dir / filename
         filepath.write_text(content, encoding="utf-8")

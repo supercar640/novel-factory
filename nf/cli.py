@@ -335,6 +335,7 @@ def handle_next(pf, state):
                 draft_path = pf.root / df
                 if draft_path.exists():
                     content = draft_path.read_text(encoding="utf-8")
+                    content = pf.inject_char_count(content)
                     ep_path = pf.episodes_dir / state.revision_episode
                     ep_path.write_text(content, encoding="utf-8")
                     print(display.ok(f"에피소드 수정 완료: {ep_path.name}"))

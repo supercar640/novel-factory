@@ -238,7 +238,7 @@ def handle_command(pf: ProjectFiles, state: ProjectState, cmd: str, kwargs: dict
             sf_path = pf.root / sf
             if sf_path.exists():
                 total_chars += _PF.count_story_chars(sf_path.read_text(encoding="utf-8"))
-        if total_chars < 5500:
+        if state.config.get("webnovel", True) and total_chars < 5500:
             print(display.error(
                 f"병합 불가: 누적 {total_chars:,}자 / 최소 5,500자. "
                 f"{5500 - total_chars:,}자 추가 필요. 장면을 더 작성하세요."
@@ -252,7 +252,10 @@ def handle_command(pf: ProjectFiles, state: ProjectState, cmd: str, kwargs: dict
         # 병합 결과 글자 수 표시
         text = merged_path.read_text(encoding="utf-8")
         char_count = _PF.count_story_chars(text)
-        print(display.ok(f"병합 결과: {char_count:,}자 (기준: 5,500자)"))
+        if state.config.get("webnovel", True):
+            print(display.ok(f"병합 결과: {char_count:,}자 (기준: 5,500자)"))
+        else:
+            print(display.ok(f"병합 결과: {char_count:,}자"))
         return state
 
     # context-backup needs special handling (file backup + state update)

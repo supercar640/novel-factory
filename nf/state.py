@@ -370,8 +370,14 @@ def execute_action(state: ProjectState, action: str, **kwargs) -> tuple[ProjectS
                 return state, display.error("mode는 'standalone' 또는 'passthrough'만 가능합니다.")
             # mode는 state.json이 아닌 ai_config.json에 저장
             return state, display.ok(f"설정 변경: mode = {value} (ai_config.json에 저장하려면 ai-provider 명령 사용)")
+        if key == "webnovel":
+            if value.lower() not in ("true", "false"):
+                return state, display.error("webnovel은 'true' 또는 'false'만 가능합니다.")
+            state.config["webnovel"] = value.lower() == "true"
+            label = "웹소설 모드 (분량 체크 활성)" if state.config["webnovel"] else "자유 모드 (분량 체크 비활성)"
+            return state, display.ok(f"설정 변경: {label}")
         if key not in ("style_reference",):
-            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode, auto_write, mode")
+            return state, display.error(f"알 수 없는 설정 키: {key}. 사용 가능: style_reference, writing_mode, auto_write, webnovel, mode")
         state.config[key] = value
         return state, display.ok(f"설정 변경: {key} = {value}")
 

@@ -7,7 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .models import Phase, ProjectState, Step
+from .models import ItemStatus, Phase, ProjectState, Step
 from .fileops import ProjectFiles, find_project_root
 from .state import validate_action, execute_action, get_valid_actions
 from . import display
@@ -131,6 +131,8 @@ def check_draft_length(pf, state):
     """writing_decision 단계에서 approve 시 draft 분량 검증."""
     if state.step != Step.WRITING_DECISION.value:
         return None
+    if not state.config.get("webnovel", True):
+        return None
     if not state.draft_files:
         return None
     for df in state.draft_files:
@@ -147,7 +149,25 @@ def check_draft_length(pf, state):
     return None
 
 
+_SHORTCUT_MAP = {"s": "select", "h": "hold", "d": "discard"}
+
+
+def _expand_shortcuts(argv):
+    """'s1' → ['select', '1'], 'h2' → ['hold', '2'] 등 단축키+숫자 전처리."""
+    import re
+    if not argv:
+        return argv
+    m = re.match(r'^([shd])(\d+)$', argv[0], re.IGNORECASE)
+    if m:
+        cmd = _SHORTCUT_MAP[m.group(1).lower()]
+        return [cmd, m.group(2)] + list(argv[1:])
+    return argv
+
+
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    argv = _expand_shortcuts(argv)
     parser = build_parser()
     args, remaining = parser.parse_known_args(argv)
 
@@ -180,7 +200,7 @@ def main(argv=None):
     elif args.command == "add":
         run_action(pf, state, "add", text=args.text, probability=args.probability)
     elif args.command == "select":
-        run_action(pf, state, "select", item_ids=args.ids)
+        handle_select(pf, state, args.ids)
     elif args.command == "hold":
         handle_hold(pf, state, args.id)
     elif args.command == "discard":
@@ -244,6 +264,20 @@ def main(argv=None):
         handle_ai_cost_reset(pf)
     else:
         parser.print_help()
+
+
+def handle_select(pf, state, item_ids):
+    """select 처리 + 미선정 active 항목을 자동 shelve."""
+    selected_set = set(item_ids)
+    # 선정 전에 나머지 active 항목을 shelve
+    if state.step in (Step.DIRECTION_DECISION.value, Step.DEVELOPMENT_DECISION.value):
+        for item in state.items:
+            if item.id not in selected_set and item.status == ItemStatus.PROPOSED.value:
+                item.status = ItemStatus.HELD.value
+                prefix = "idea" if state.phase == Phase.PHASE1.value else "dev"
+                shelve_path = pf.save_to_shelve(item.text, item.id, prefix, item.probability)
+                print(display.ok(f"자동 보류: {display.format_item_short(item)} → {shelve_path.name}"))
+    run_action(pf, state, "select", item_ids=item_ids)
 
 
 def handle_hold(pf, state, item_id):
@@ -473,7 +507,7 @@ def handle_merge_episode(pf, state):
         sf_path = pf.root / sf
         if sf_path.exists():
             total_chars += ProjectFiles.count_story_chars(sf_path.read_text(encoding="utf-8"))
-    if total_chars < MIN_STORY_CHARS:
+    if state.config.get("webnovel", True) and total_chars < MIN_STORY_CHARS:
         print(display.error(
             f"병합 불가: 누적 {total_chars:,}자 / 최소 {MIN_STORY_CHARS:,}자. "
             f"{MIN_STORY_CHARS - total_chars:,}자 추가 필요. 장면을 더 작성하세요."
@@ -487,7 +521,10 @@ def handle_merge_episode(pf, state):
     # 병합 결과 글자 수 표시
     text = merged_path.read_text(encoding="utf-8")
     char_count = ProjectFiles.count_story_chars(text)
-    print(display.ok(f"병합 결과: {char_count:,}자 (기준: {MIN_STORY_CHARS:,}자)"))
+    if state.config.get("webnovel", True):
+        print(display.ok(f"병합 결과: {char_count:,}자 (기준: {MIN_STORY_CHARS:,}자)"))
+    else:
+        print(display.ok(f"병합 결과: {char_count:,}자"))
 
 
 def handle_revise_episode(pf, state, args):

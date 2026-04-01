@@ -153,5 +153,8 @@ def format_scenes(pf, state: ProjectState) -> str:
         else:
             lines.append(f"  {i}. {Path(sf).name} (없음)")
 
-    lines.append(f"  누적: {total_chars:,}/5,500자")
+    if state.config.get("webnovel", True):
+        lines.append(f"  누적: {total_chars:,}/5,500자")
+    else:
+        lines.append(f"  누적: {total_chars:,}자")
     return "\n".join(lines)

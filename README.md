@@ -37,6 +37,7 @@ PD(기획자)와 AI가 협업하여 웹소설을 기획하고 집필하는 인�
 # 독립 실행 (standalone 모드)
 python nf.py                     # 대화형 REPL 진입
 python nf.py init "제목"          # 새 프로젝트 생성
+python nf.py init "제목" --projects-dir D:\NFProjects  # 다른 드라이브에 생성
 python nf.py status              # 현재 상태 확인
 
 # Claude Code에서 실행 (passthrough 모드)
@@ -143,7 +144,7 @@ python nf.py <command>
 
 | 명령어 | 단축키 | 설명 |
 |--------|--------|------|
-| `init <name> [--title <dir>] [--type novel\|comic]` | — | 새 프로젝트 생성 (comic=만화 스토리보드) |
+| `init <name> [--title <dir>] [--projects-dir <path>] [--type novel\|comic]` | — | 새 프로젝트 생성 (comic=만화 스토리보드) |
 | `status` | — | 현재 상태 표시 |
 | `items` | — | 제안 항목 목록 |
 | `add "<text>" [-p 0.XX]` | — | 항목 추가 |

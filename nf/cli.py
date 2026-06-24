@@ -26,6 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_init.add_argument("name", nargs="?", default=None,
                         help="project name (ASCII ok; 한글은 --name-file 권장)")
     p_init.add_argument("--title", help="english dir name", default=None)
+    p_init.add_argument("--projects-dir", "--dir", dest="projects_dir", default=None,
+                        help="base directory to create the project under (default: ./projects)")
     p_init.add_argument("--name-file", default=None,
                         help="UTF-8 파일에서 프로젝트명을 읽음 (Windows 비ASCII 안전)")
     p_init.add_argument("--type", dest="work_type", choices=["novel", "comic"], default="novel",
@@ -166,6 +168,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def load_project(project_name=None):
+    if project_name:
+        explicit = Path(project_name).expanduser()
+        if (explicit / "state.json").exists():
+            pf = ProjectFiles.load(explicit)
+            state = pf.read_state()
+            return pf, state
+
     root = find_project_root(project_name=project_name)
     if root is None:
         msg = "project not found. use 'nf init <name>'"
@@ -492,8 +501,12 @@ def handle_init(args):
         title = re.sub(r"\s+", "_", title).strip("_").lower()
         if not title:
             title = "novel_project"
-    base_dir = Path.cwd() / "projects"
-    base_dir.mkdir(exist_ok=True)
+    base_dir = (
+        Path(args.projects_dir).expanduser()
+        if getattr(args, "projects_dir", None)
+        else Path.cwd() / "projects"
+    )
+    base_dir.mkdir(parents=True, exist_ok=True)
     try:
         pf = ProjectFiles.create_project(base_dir, name, title, work_type=getattr(args, "work_type", "novel"))
         from .taste import seed_profile

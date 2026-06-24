@@ -58,6 +58,17 @@ def ask_title() -> str:
         return sanitized
 
 
+def ask_projects_dir() -> Path:
+    """Prompt for the base projects directory."""
+    default = Path.cwd() / "projects"
+    try:
+        raw = input(f"Projects directory [{default}]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        raise SystemExit(0)
+    return Path(raw).expanduser() if raw else default
+
+
 def load_or_create() -> tuple[ProjectFiles, ProjectState]:
     """Find existing project or create a new one."""
     root = find_project_root()
@@ -68,8 +79,8 @@ def load_or_create() -> tuple[ProjectFiles, ProjectState]:
         return pf, state
 
     title = ask_title()
-    base_dir = Path.cwd() / "projects"
-    base_dir.mkdir(exist_ok=True)
+    base_dir = ask_projects_dir()
+    base_dir.mkdir(parents=True, exist_ok=True)
     try:
         pf = ProjectFiles.create_project(base_dir, title, title)
     except FileExistsError as e:

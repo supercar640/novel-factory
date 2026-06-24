@@ -61,6 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **"새 소설 시작하자"** → 신규 작성: 장르/키워드 질문 → **한글 프로젝트명은 Write 도구로 UTF-8 파일(예: `projects/.initname.txt`)에 저장 후** `python nf.py init --title <디렉토리명> --name-file projects/.initname.txt` → 임시 파일 삭제 → Phase 1
   - 이유: Windows 셸(PowerShell 5.1/git-bash)이 비ASCII argv를 손실시키므로 한글명은 `--name-file` 필수. ASCII명이면 `init "<name>" --title <dir>`도 가능.
+  - 사용자가 D: 등 다른 드라이브/폴더를 지정하면 `--projects-dir <path>`를 함께 붙인다.
 - **"새 만화 시작하자" / "만화 스토리보드"** → 신규 작성(만화): 장르/키워드 질문 → 한글 프로젝트명은 위 `--name-file` 규칙 그대로 → `python nf.py init --title <디렉토리명> --name-file projects/.initname.txt --type comic` → Phase 1
   - 소설과 동일한 4-Phase 흐름. 산출물만 페이지/컷 스토리보드. 분량 기준은 `comic_pages_per_episode`(기본 18p).
   - Phase 1 컨텍스트 생성 시 `tone.md`에 **"작화·연출 방향"** 섹션을 포함한다: 화풍 톤(극화체/명랑체 등), 페이지당 평균 컷 수·컷 분할 밀도, 말풍선·SFX 표기 관례.
@@ -308,7 +309,7 @@ LLM 라이터는 "재미"를 모른다 — 뻔한 전개를 고르거나 퇴고�
 
 | 명령어 | 설명 |
 |--------|------|
-| `init <name> [--title <dir>] [--type novel\|comic]` | 새 프로젝트 생성 (comic=만화 스토리보드) |
+| `init <name> [--title <dir>] [--projects-dir <path>] [--type novel\|comic]` | 새 프로젝트 생성 (comic=만화 스토리보드) |
 | `status` | 현재 상태 표시 |
 | `items` | 항목 목록 (활성 항목만) |
 | `add "<text>" [-p 0.XX]` | 항목 추가 |
